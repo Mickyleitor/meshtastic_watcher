@@ -9,7 +9,7 @@
   - Auto "press" about every 12 h (best-effort with VLO).
   - Local button can also trigger a press.
   - Software UVLO with hysteresis: MSP430 will not press unless VCC is above UVLO_RISE_MV
-    for several confirmations; it returns to UVLO below UVLO_FALL_MV.
+    for several confirmations; returns to UVLO below UVLO_FALL_MV.
   - Startup inhibit window after power-good.
 
   Pins (change as needed)
@@ -39,7 +39,7 @@
   #define TOGGLE_TICKS          (43200UL)   /* 12 h if ACLK = 32768 Hz */
 #endif
 
-/* Pulse width for simulated press */
+/* Pulse width for simulated press (ms) */
 #define PULSE_MS                120u
 
 /* Debounce for local button, in WDT ticks */
@@ -80,6 +80,24 @@ static volatile bool          do_uvlo_check = false;   /* set by ISR; handled in
 
 /* ============================== Helpers ============================== */
 
+/* Set DCO to 1 MHz using factory calibration so delay_ms() timing is reasonable. */
+static void dco_init_1mhz(void) {
+  if (CALBC1_1MHZ != 0xFF) {
+    BCSCTL1 = CALBC1_1MHZ;
+    DCOCTL  = CALDCO_1MHZ;
+  } else {
+    /* Fallback: leave defaults if calibration is erased */
+  }
+}
+
+/* Simple millisecond delay at ~1 MHz DCO; each iteration burns ~1000 cycles.
+   Uses compile-time constant in __delay_cycles to satisfy GCC. */
+static void delay_ms(unsigned int ms) {
+  while (ms--) {
+    __delay_cycles(1000);  /* ~1 ms at 1 MHz */
+  }
+}
+
 /* Open-drain-like output: idle Hi-Z, drive LOW during pulse */
 static inline void od_idle(void) {
   P1OUT &= ~OUTPUT_PIN_BIT;   /* prepare low */
@@ -90,9 +108,7 @@ static inline void od_press_ms(unsigned int ms) {
   /* Only call when allowed; this function does not check UVLO/inhibit. */
   P1OUT &= ~OUTPUT_PIN_BIT;   /* low level to drive */
   P1DIR |=  OUTPUT_PIN_BIT;   /* drive low */
-  /* Busy wait: assume ~1 MHz DCO; approximate is fine */
-  const unsigned long cycles = (unsigned long)ms * 1000UL; /* ~1 cycle/µs at ~1 MHz */
-  __delay_cycles(cycles);
+  delay_ms(ms);               /* variable delay using constant-cycle chunks */
   P1DIR &= ~OUTPUT_PIN_BIT;   /* back to Hi-Z */
 }
 
@@ -116,8 +132,9 @@ static void gpio_init(void) {
   P1IE  |=  BUTTON_PIN_BIT;
 }
 
-/* Clocks */
+/* Clocks: ACLK source and DCO */
 static void clocks_init(void) {
+  dco_init_1mhz();            /* for consistent delay_ms timing */
 #if USE_VLO
   BCSCTL3 |= LFXT1S_2;        /* ACLK = VLO */
 #else
@@ -138,7 +155,7 @@ static void wdt_interval_init(void) {
 static unsigned int read_vcc_mV(void) {
   ADC10CTL0 = SREF_1 | REFON | REF2_5V | ADC10ON | ADC10SHT_3;
   ADC10CTL1 = INCH_11;             /* VCC/2 */
-  __delay_cycles(30000);           /* allow reference to settle (~30 ms @ ~1 MHz) */
+  delay_ms(30);                    /* allow reference to settle (~30 ms) */
 
   ADC10CTL0 |= ENC | ADC10SC;
   while (!(ADC10CTL0 & ADC10IFG)) { /* wait */ }
