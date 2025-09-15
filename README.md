@@ -2,10 +2,10 @@
 
 Ultra-low-power **MSP430** firmware that emits an **active-LOW pulse** to simulate a Meshtastic button press.
 
-* **Schedule**; one pulse every `PULSE_INTERVAL_MIN` minutes; default is **12 hours**.
-* **Pulse width**; default **500 ms**.
-* **Output style**; open-drain behavior on **P1.0**; idle Hi-Z; only driven LOW during the pulse.
-* **Power**; **LPM3** between \~30 s timer ticks; \~0.1 µA typical in sleep excluding the brief pulse.
+- **Schedule**; one pulse every `PULSE_INTERVAL_MIN` minutes; default is **12 hours**.
+- **Pulse width**; default **500 ms**.
+- **Output style**; open-drain behavior on **P1.0**; idle Hi-Z; only driven LOW during the pulse.
+- **Power**; **LPM3** between ~30 s timer ticks; ~0.1 µA typical in sleep excluding the brief pulse.
 
 ---
 
@@ -17,19 +17,35 @@ Some Heltec V3 nodes in solar setups fail to rejoin the mesh after a deep discha
 
 ## How it works
 
-* **Timer_A** runs from **ACLK = VLO**; interrupts about every **30 s**.
+- **Timer_A** runs from **ACLK = VLO**; interrupts about every **30 s**.  
   The ISR accumulates ticks until the requested interval elapses; then it emits a single LOW pulse.
-* **Open-drain style output**; P1.0 is an input when idle; for the pulse it becomes output-LOW for `PULSE_MS`, then returns to input.
-* **Low power**; CPU sleeps in **LPM3** between interrupts; DCO at 1 MHz is only enabled briefly to time the pulse with a cycle delay.
-* **Board hygiene**; all unused pins are outputs driven LOW to minimize leakage.
+- **Open-drain style output**; P1.0 is an input when idle; for the pulse it becomes output-LOW for `PULSE_MS`, then returns to input.
+- **Low power**; CPU sleeps in **LPM3** between interrupts; DCO at 1 MHz is only enabled briefly to time the pulse with a cycle delay.
+- **Board hygiene**; all unused pins are outputs driven LOW to minimize leakage.
 
 ---
 
 ## Features
 
-* Automatic simulated press on a fixed cadence; default every **12 hours**.
-* Active-LOW pulse; **500 ms** by default; adjustable at build time.
-* No external crystal required; uses **VLO**; cadence is approximate without calibration.
+- Automatic simulated press on a fixed cadence; default every **12 hours**.
+- Active-LOW pulse; **500 ms** by default; adjustable at build time.
+- No external crystal required; uses **VLO**; cadence is approximate without calibration.
+
+---
+
+## State machine diagram
+
+```mermaid
+stateDiagram-v2
+    [*] --> Init
+    Init --> Sleep : Configure clocks & GPIO
+    Sleep --> Tick : Timer_A interrupt (~30 s)
+    Tick --> Sleep : Accumulate time < Interval
+    Tick --> Pulse : Interval reached
+    Pulse --> Sleep : Drive P1.0 LOW for PULSE_MS then return to Hi-Z
+```
+
+This state machine shows the minimal cycle: after initialization, the MSP430 sleeps in LPM3, wakes briefly on ~30 s ticks, and generates a LOW pulse when the target interval is reached.
 
 ---
 
@@ -72,7 +88,7 @@ Edit constants at the top of `src/main.c`.
 * `PULSE_PIN_BIT`; output pin bit; default `BIT0` for **P1.0**.
 * Timing base:
 
-  * `ACLK_VLO_HZ`; nominal VLO frequency; default `11805` Hz; used to derive a \~30 s ISR tick.
+  * `ACLK_VLO_HZ`; nominal VLO frequency; default `11805` Hz; used to derive a ~30 s ISR tick.
   * `BASE_PERIOD_S`; tick period in seconds; default `30`.
 
 ---
@@ -82,7 +98,7 @@ Edit constants at the top of `src/main.c`.
 * LPM3 between interrupts; short wake for the ISR and the pulse.
 * Unused pins configured as outputs driven LOW.
 * No always-on LEDs.
-* Target sleep current; \~0.1 µA typical at 3 V on a clean board; excludes the pulse window and any target pull-ups.
+* Target sleep current; ~0.1 µA typical at 3 V on a clean board; excludes the pulse window and any target pull-ups.
 
 ---
 
