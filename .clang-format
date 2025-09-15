@@ -1,7 +1,6 @@
 ---
 BasedOnStyle: Google
 AlignAfterOpenBracket: AlwaysBreak
-AlignArrayOfStructures: Right
 AlignConsecutiveAssignments:
   Enabled: true
   AcrossComments: true
@@ -15,7 +14,11 @@ AlignConsecutiveBitFields:
 AlignConsecutiveDeclarations:
   Enabled: false
 AlignConsecutiveMacros:
-  Enabled: false
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
+  AlignCompound: true
+  PadOperators: true
 AlignEscapedNewlines: Left
 AlignOperands: AlignAfterOperator
 AllowAllArgumentsOnNextLine: false
@@ -38,6 +41,5 @@ KeepEmptyLinesAtTheStartOfBlocks: false
 LineEnding: DeriveCRLF
 MaxEmptyLinesToKeep: 1
 PenaltyReturnTypeOnItsOwnLine: 2000
-SkipMacroDefinitionBody: true
 SpacesBeforeTrailingComments: 1
 TabWidth: 4

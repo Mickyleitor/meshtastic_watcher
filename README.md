@@ -1,58 +1,47 @@
 # Meshtastic Watcher
 
-Ultra-low-power **MSP430** firmware that drives a **digital output** to simulate a button press
-on a Meshtastic node.
+Ultra-low-power **MSP430** firmware that emits an **active-LOW pulse** to simulate a Meshtastic button press.
 
-- **Timer**: every ~12 hours it toggles the output to simulate a press.
-- **Local button**: pressing it also triggers a simulated press.
-- **LPM3** between events for very low sleep current.
+* **Schedule**; one pulse every `PULSE_INTERVAL_MIN` minutes; default is **12 hours**.
+* **Pulse width**; default **500 ms**.
+* **Output style**; open-drain behavior on **P1.0**; idle Hi-Z; only driven LOW during the pulse.
+* **Power**; **LPM3** between \~30 s timer ticks; \~0.1 µA typical in sleep excluding the brief pulse.
 
 ---
 
 ## Motivation
 
-This project is a **watchdog** for a Meshtastic Heltec V3 node in battery + solar setups. After a full
-battery drain, the node may power up but **fail to rejoin** the mesh. Cause is unknown, but it seems
-to enter a deep power-down indefinitely. A manual button press typically recovers it. Meshtastic
-Watcher automates that press on a schedule and on demand. In my location, full battery recharge via
-solar takes no more than 12 hours.
+Some Heltec V3 nodes in solar setups fail to rejoin the mesh after a deep discharge; a manual button press usually recovers them. This firmware schedules that press using a low-power MSP430 so the node periodically gets a wake-nudge without user interaction.
 
-**Note on Heltec V3**  
-If you reassign the Meshtastic button to a different GPIO, the built-in Heltec button may no longer
-work. As a consequence, the MSP430’s local button becomes the practical way to issue user presses
-and is forwarded to the reassigned Meshtastic input.
+---
+
+## How it works
+
+* **Timer_A** runs from **ACLK = VLO**; interrupts about every **30 s**.
+  The ISR accumulates ticks until the requested interval elapses; then it emits a single LOW pulse.
+* **Open-drain style output**; P1.0 is an input when idle; for the pulse it becomes output-LOW for `PULSE_MS`, then returns to input.
+* **Low power**; CPU sleeps in **LPM3** between interrupts; DCO at 1 MHz is only enabled briefly to time the pulse with a cycle delay.
+* **Board hygiene**; all unused pins are outputs driven LOW to minimize leakage.
 
 ---
 
 ## Features
 
-- Simulated press to the Meshtastic node:
-  - **Automatic**: one press about every **12 hours** (best-effort with VLO).
-  - **Manual**: press the MSP430’s local button.
-- Digital output at 3.3 V; default MSP430 pin **P1.0** to Meshtastic button GPIO.
-- Button input on **P1.3** with internal pull-up and firmware debounce.
-- Timing via **Watchdog Timer** on **ACLK = VLO** (no crystal required).
-- Implemented in **C** bare-metal with **PlatformIO**.
+* Automatic simulated press on a fixed cadence; default every **12 hours**.
+* Active-LOW pulse; **500 ms** by default; adjustable at build time.
+* No external crystal required; uses **VLO**; cadence is approximate without calibration.
 
 ---
 
 ## Hardware
 
-- MCU: `MSP430G2553` (adaptable to other MSP430s).
-- Power: 1.8–3.6 V; prefer a low-IQ LDO if regulating.
-- Connections:
-  - MSP430 **P1.3** ↔ local push button to GND.
-  - MSP430 **P1.0** ↔ Meshtastic Heltec V3 reassigned button GPIO; 220–1 kΩ series recommended.
-  - Common **GND** between MSP430 and Heltec V3.
-- If the Meshtastic input expects **open-drain**, use a small NPN/MOSFET or optocoupler.
+* MCU; `MSP430G2553` by default; portable to similar MSP430s.
+* Power; 1.8–3.6 V; use a low-IQ regulator if needed.
+* Connections:
 
----
-
-## Low-Power Design
-
-- LPM3 between events; unused pins as outputs driven low.
-- No always-on LEDs; only temporary diagnostics.
-- Target sleep current: ≤ 2 µA at 3 V on a clean board.
+  * **P1.0** → Meshtastic button GPIO; the target must provide a pull-up; add a 220–1 kΩ series resistor if desired.
+  * **GND** → common ground with the Meshtastic node.
+* If the Meshtastic input must be **open-drain**, this firmware already idles Hi-Z; if strict open-drain is required at all times, a small NPN or MOSFET works as a buffer.
 
 ---
 
@@ -76,28 +65,34 @@ and is forwarded to the reassigned Meshtastic input.
 
 ## Configuration
 
-* Pins in `src/main.c`: `OUTPUT_PIN_BIT` (default P1.0) and `BUTTON_PIN_BIT` (default P1.3).
-* Period in `src/main.c`: `SECONDS_PER_TOGGLE` (default `43200` ≈ 12 h with crystal; with VLO it’s
-  approximate).
+Edit constants at the top of `src/main.c`.
 
-### Optional field calibration (no crystal)
+* `PULSE_INTERVAL_MIN`; minutes between pulses; default `60 * 12`.
+* `PULSE_MS`; pulse width in milliseconds; default `500`.
+* `PULSE_PIN_BIT`; output pin bit; default `BIT0` for **P1.0**.
+* Timing base:
 
-If you want the “\~12 h” to be closer to target in your environment:
+  * `ACLK_VLO_HZ`; nominal VLO frequency; default `11805` Hz; used to derive a \~30 s ISR tick.
+  * `BASE_PERIOD_S`; tick period in seconds; default `30`.
 
-1. Let the device run for 24 h; measure the actual interval between auto presses.
-2. Compute: `new_seconds = old_seconds * (target_interval / measured_interval)`.
-3. Update `SECONDS_PER_TOGGLE` with `new_seconds` and rebuild.
+---
+
+## Low-power design
+
+* LPM3 between interrupts; short wake for the ISR and the pulse.
+* Unused pins configured as outputs driven LOW.
+* No always-on LEDs.
+* Target sleep current; \~0.1 µA typical at 3 V on a clean board; excludes the pulse window and any target pull-ups.
 
 ---
 
 ## Limitations
 
-* With VLO timing, drift is expected; temperature and unit-to-unit variation will affect cadence.
-* Heltec V3 GPIO and wake sources may change in future firmware; if a proper wake source becomes
-  available, this watcher may no longer be needed.
+* VLO drifts with temperature and voltage; expect cadence variation unless calibrated.
+* Heltec V3 GPIO behavior may change with firmware; if Meshtastic adds a reliable wake source, this watcher may become unnecessary.
 
 ---
 
 ## License
 
-MIT License – see [LICENSE](LICENSE) for details.
+MIT License; see [LICENSE](LICENSE).
