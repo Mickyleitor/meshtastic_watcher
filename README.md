@@ -4,7 +4,7 @@ Ultra-low-power **MSP430** firmware that emits an **active-LOW pulse** to simula
 
 - **Schedule**; one pulse every `PULSE_INTERVAL_MIN` minutes; default is **12 hours**.
 - **Pulse width**; default **500 ms**.
-- **Output style**; open-drain behavior on **P1.0**; idle Hi-Z; only driven LOW during the pulse.
+- **Output style**; open-drain behavior on **PULSE_PIN_BIT**; idle Hi-Z; only driven LOW during the pulse.
 - **Power**; **LPM3** between ~30 s timer ticks; ~0.1 µA typical in sleep excluding the brief pulse.
 
 ---
@@ -17,9 +17,9 @@ Some Heltec V3 nodes in solar setups fail to rejoin the mesh after a deep discha
 
 ## How it works
 
-- **Timer_A** runs from **ACLK = VLO**; interrupts about every **30 s**.  
+- **Timer_A** runs from **ACLK = VLO**; interrupts about every **30 s**.
   The ISR accumulates ticks until the requested interval elapses; then it emits a single LOW pulse.
-- **Open-drain style output**; P1.0 is an input when idle; for the pulse it becomes output-LOW for `PULSE_MS`, then returns to input.
+- **Open-drain style output**; PULSE_PIN_BIT is an input when idle; for the pulse it becomes output-LOW for `PULSE_MS`, then returns to input.
 - **Low power**; CPU sleeps in **LPM3** between interrupts; DCO at 1 MHz is only enabled briefly to time the pulse with a cycle delay.
 - **Board hygiene**; all unused pins are outputs driven LOW to minimize leakage.
 
@@ -42,7 +42,7 @@ stateDiagram-v2
     Sleep --> Tick : Timer_A interrupt (~30 s)
     Tick --> Sleep : Accumulate time < Interval
     Tick --> Pulse : Interval reached
-    Pulse --> Sleep : Drive P1.0 LOW for PULSE_MS then return to Hi-Z
+    Pulse --> Sleep : Drive PULSE_PIN_BIT LOW for PULSE_MS then return to Hi-Z
 ```
 
 This state machine shows the minimal cycle: after initialization, the MSP430 sleeps in LPM3, wakes briefly on ~30 s ticks, and generates a LOW pulse when the target interval is reached.
@@ -51,13 +51,13 @@ This state machine shows the minimal cycle: after initialization, the MSP430 sle
 
 ## Hardware
 
-* MCU; `MSP430G2553` by default; portable to similar MSP430s.
-* Power; 1.8–3.6 V; use a low-IQ regulator if needed.
-* Connections:
+- MCU; `MSP430G2553` by default; portable to similar MSP430s.
+- Power; 1.8–3.6 V; use a low-IQ regulator if needed.
+- Connections:
 
-  * **P1.0** → Meshtastic button GPIO; the target must provide a pull-up; add a 220–1 kΩ series resistor if desired.
-  * **GND** → common ground with the Meshtastic node.
-* If the Meshtastic input must be **open-drain**, this firmware already idles Hi-Z; if strict open-drain is required at all times, a small NPN or MOSFET works as a buffer.
+  - **PULSE_PIN_BIT** → Meshtastic button GPIO; the target must provide a pull-up; add a 220–1 kΩ series resistor if desired.
+  - **GND** → common ground with the Meshtastic node.
+- If the Meshtastic input must be **open-drain**, this firmware already idles Hi-Z; if strict open-drain is required at all times, a small NPN or MOSFET works as a buffer.
 
 ---
 
@@ -83,29 +83,29 @@ This state machine shows the minimal cycle: after initialization, the MSP430 sle
 
 Edit constants at the top of `src/main.c`.
 
-* `PULSE_INTERVAL_MIN`; minutes between pulses; default `60 * 12`.
-* `PULSE_MS`; pulse width in milliseconds; default `500`.
-* `PULSE_PIN_BIT`; output pin bit; default `BIT0` for **P1.0**.
-* Timing base:
+- `PULSE_INTERVAL_MIN`; minutes between pulses; default `60 * 12`.
+- `PULSE_MS`; pulse width in milliseconds; default `500`.
+- `PULSE_PIN_BIT`; output pin bit.
+- Timing base:
 
-  * `ACLK_VLO_HZ`; nominal VLO frequency; default `11805` Hz; used to derive a ~30 s ISR tick.
-  * `BASE_PERIOD_S`; tick period in seconds; default `30`.
+  - `ACLK_VLO_HZ`; nominal VLO frequency; default `11805` Hz; used to derive a ~30 s ISR tick.
+  - `BASE_PERIOD_S`; tick period in seconds; default `30`.
 
 ---
 
 ## Low-power design
 
-* LPM3 between interrupts; short wake for the ISR and the pulse.
-* Unused pins configured as outputs driven LOW.
-* No always-on LEDs.
-* Target sleep current; ~0.1 µA typical at 3 V on a clean board; excludes the pulse window and any target pull-ups.
+- LPM3 between interrupts; short wake for the ISR and the pulse.
+- Unused pins configured as outputs driven LOW.
+- No always-on LEDs.
+- Target sleep current; ~0.1 µA typical at 3 V on a clean board; excludes the pulse window and any target pull-ups.
 
 ---
 
 ## Limitations
 
-* VLO drifts with temperature and voltage; expect cadence variation unless calibrated.
-* Heltec V3 GPIO behavior may change with firmware; if Meshtastic adds a reliable wake source, this watcher may become unnecessary.
+- VLO drifts with temperature and voltage; expect cadence variation unless calibrated.
+- Heltec V3 GPIO behavior may change with firmware; if Meshtastic adds a reliable wake source, this watcher may become unnecessary.
 
 ---
 

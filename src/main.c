@@ -3,20 +3,20 @@
  * @brief Meshtastic Watcher — Minimal low-power pulse (MSP430G2553)
  *
  * @section what_it_does What it does
- * - Generates a LOW pulse on P1.0 every @ref PULSE_INTERVAL_MIN minutes.
+ * - Generates a LOW pulse on PULSE_PIN_BIT every @ref PULSE_INTERVAL_MIN minutes.
  * - Optimized for minimal energy; ~0.1 µA typical in LPM3 (excluding pulse time).
  *
  * @section how_it_does How it does
  * - Timer_A runs from ACLK = VLO (~12 kHz) and interrupts every ~30 s.
  *   The ISR accumulates 30 s ticks until the target interval elapses, then emits the pulse.
- * - Output uses open-drain behavior: idle Hi-Z; only driven LOW during the pulse by switching P1.0
- * to output-low.
+ * - Output uses open-drain behavior: idle Hi-Z; only driven LOW during the pulse by switching
+ * PULSE_PIN_BIT to output-low.
  * - CPU remains in LPM3 between interrupts for low power.
  * - DCO (1 MHz) is only enabled to time the pulse with a simple busy-wait delay.
  * - All unused pins are configured as outputs driven LOW to minimize leakage.
  *
  * @section pins Pins
- * - OUTPUT -> P1.0  (active-LOW pulse; idle Hi-Z; open-drain style)
+ * - OUTPUT -> PULSE_PIN_BIT  (active-LOW pulse; idle Hi-Z; open-drain style)
  * - GND    -> common ground with the target device
  *
  * @section build_config Build-time config
