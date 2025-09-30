@@ -23,6 +23,7 @@
  * - @ref PULSE_INTERVAL_MIN : Minutes between pulses
  * - @ref PULSE_MS           : Pulse width in milliseconds.
  * - @ref PULSE_PIN_BIT      : Output pin bit mask
+ * - @ref DBG_PIN_BIT        : Debug output pin bit mask (pulses on startup)
  *
  * @section notes Notes
  * - Assumes the target side provides a pull-up on the button GPIO.
@@ -35,7 +36,8 @@
 /* ---------------- Defines ---------------- */
 #define PULSE_INTERVAL_MIN (60 * 12) /* minutes between pulses */
 #define PULSE_MS           (500u)    /* pulse duration in ms */
-#define PULSE_PIN_BIT      (BIT0)    /* output pin: P1.0 */
+#define PULSE_PIN_BIT      (BIT4)    /* output pin: P1.4 */
+#define DBG_PIN_BIT        (BIT3)    /* output pin: P1.3 */
 
 /* Timer_A constants for ~30 s base period with VLO */
 #define ACLK_VLO_HZ        (11805u) // VLO is ~12 kHz, measured to be 11.8 kHz
@@ -108,6 +110,22 @@ static void do_pulse(void) {
     /* P1OUT stays 0 for the next pulse */
 }
 
+/**
+ * @brief Generate a debug burst on DBG_PIN_BIT.
+ * - Pulses the pin 10 times with 100 ms HIGH, 100 ms LOW.
+ * - Used to indicate startup.
+ */
+static void do_dbg_burst(void) {
+    int i = 0;
+    for (i = 0; i < 10; i++) {
+        P1OUT |= DBG_PIN_BIT; /* drive HIGH */
+        delay_ms(100);
+        P1OUT &= ~DBG_PIN_BIT; /* drive LOW */
+        delay_ms(100);
+    }
+    P1OUT &= ~DBG_PIN_BIT; /* ensure LOW */
+}
+
 /* ---------------- Main ---------------- */
 int main(void) {
     WDTCTL = WDTPW | WDTHOLD; /* stop watchdog */
@@ -115,6 +133,7 @@ int main(void) {
     clocks_init();
     gpio_init_lowpower();
     timerA_init_30s();
+    do_dbg_burst();
 
     __enable_interrupt();
 

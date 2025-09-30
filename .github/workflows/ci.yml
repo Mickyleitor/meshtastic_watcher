@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        env: [ lpmsp430g2553 ]
+        env: [ lpmsp430g2553 , lpmsp430g2452 ]
 
     steps:
       - uses: actions/checkout@v4
