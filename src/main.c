@@ -40,7 +40,7 @@
 #define DBG_PIN_BIT        (BIT3)    /* output pin: P1.3 */
 
 /* Timer_A constants for ~30 s base period with VLO */
-#define ACLK_VLO_HZ        (11805u) // VLO is ~12 kHz, measured to be 11.8 kHz
+#define ACLK_VLO_HZ        (12000u) // VLO is ~12 kHz
 #define TIMER_DIV          (8u)
 #define TIMER_HZ           (ACLK_VLO_HZ / TIMER_DIV)
 #define BASE_PERIOD_S      (30u)
@@ -116,7 +116,8 @@ static void do_pulse(void) {
  * - Used to indicate startup.
  */
 static void do_dbg_burst(void) {
-    int i = 0;
+    int i  = 0;
+    P1DIR |= DBG_PIN_BIT; /* Output */
     for (i = 0; i < 10; i++) {
         P1OUT |= DBG_PIN_BIT; /* drive HIGH */
         delay_ms(100);
@@ -124,6 +125,7 @@ static void do_dbg_burst(void) {
         delay_ms(100);
     }
     P1OUT &= ~DBG_PIN_BIT; /* ensure LOW */
+    P1DIR &= ~DBG_PIN_BIT; /* back to Hi-Z */
 }
 
 /* ---------------- Main ---------------- */
