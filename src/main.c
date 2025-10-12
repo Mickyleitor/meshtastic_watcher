@@ -34,7 +34,7 @@
 #include <msp430.h>
 
 /* ---------------- Defines ---------------- */
-#define PULSE_INTERVAL_MIN (60 * 12) /* minutes between pulses */
+#define PULSE_INTERVAL_MIN (60 * 24) /* minutes between pulses */
 #define PULSE_MS           (500u)    /* pulse duration in ms */
 #define PULSE_PIN_BIT      (BIT4)    /* output pin: P1.4 */
 #define DBG_PIN_BIT        (BIT3)    /* output pin: P1.3 */

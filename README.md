@@ -2,7 +2,7 @@
 
 Ultra-low-power **MSP430** firmware that emits an **active-LOW pulse** to simulate a Meshtastic button press.
 
-- **Schedule**; one pulse every `PULSE_INTERVAL_MIN` minutes; default is **12 hours**.
+- **Schedule**; one pulse every `PULSE_INTERVAL_MIN` minutes; default is **24 hours**.
 - **Pulse width**; default **500 ms**.
 - **Output style**; open-drain behavior on **PULSE_PIN_BIT**; idle Hi-Z; only driven LOW during the pulse.
 - **Power**; **LPM3** between ~30 s timer ticks; ~0.1 µA typical in sleep excluding the brief pulse.
@@ -27,7 +27,7 @@ Some Heltec V3 nodes in solar setups fail to rejoin the mesh after a deep discha
 
 ## Features
 
-- Automatic simulated press on a fixed cadence; default every **12 hours**.
+- Automatic simulated press on a fixed cadence; default every **24 hours**.
 - Active-LOW pulse; **500 ms** by default; adjustable at build time.
 - No external crystal required; uses **VLO**; cadence is approximate without calibration.
 
@@ -83,12 +83,12 @@ This state machine shows the minimal cycle: after initialization, the MSP430 sle
 
 Edit constants at the top of `src/main.c`.
 
-- `PULSE_INTERVAL_MIN`; minutes between pulses; default `60 * 12`.
+- `PULSE_INTERVAL_MIN`; minutes between pulses; default `60 * 24`.
 - `PULSE_MS`; pulse width in milliseconds; default `500`.
 - `PULSE_PIN_BIT`; output pin bit.
 - Timing base:
 
-  - `ACLK_VLO_HZ`; nominal VLO frequency; default `11805` Hz; used to derive a ~30 s ISR tick.
+  - `ACLK_VLO_HZ`; nominal VLO frequency; default `12000` Hz; used to derive a ~30 s ISR tick.
   - `BASE_PERIOD_S`; tick period in seconds; default `30`.
 
 ---
