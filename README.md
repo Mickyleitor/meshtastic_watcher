@@ -83,7 +83,7 @@ This state machine shows the minimal cycle: after initialization, the MSP430 sle
 
 Edit constants at the top of `src/main.c`.
 
-- `PULSE_INTERVAL_MIN`; minutes between pulses; default `60 * 24`.
+- `PULSE_INTERVAL_MIN`; minutes between pulses; default `60 * 12`.
 - `PULSE_MS`; pulse width in milliseconds; default `500`.
 - `PULSE_PIN_BIT`; output pin bit.
 - Timing base:
