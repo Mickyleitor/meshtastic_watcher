@@ -86,8 +86,8 @@ This is a handcrafted solution built on perforated prototyping board for small-s
 ```
 MSP430G2553 → Meshtastic Heltec V3
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-VCC (Pin 1)   → VBAT or 3.3V supply (shared solar/battery)
-GND (Pin 20)  → GND
+VCC (Pin 1)   → 3.3V supply (shared with Meshtastic node)
+GND           → GND
 P1.4 (Pin 7)  → Pin 0 (RESET) on Heltec V3
 
 MSP430 RST Circuit:
@@ -104,7 +104,8 @@ P1.2 (Pin 3, UART RX)─┤   TX→RX, RX→TX, TEST→TEST, RST→RST
 VCC, GND ─────────────┘
 ```
 
-**Power Source:** MSP430 VCC connected to same supply as Meshtastic node (solar/battery system). 10µF capacitor provides power stability during ADC measurements and pulse events. MSP430 operates down to 1.8V, remaining functional during brownout when node shuts down at ~3.0V.
+**Power Source:** MSP430 VCC connected to same supply as Meshtastic node.
+10µF capacitor provides power stability during ADC measurements and pulse events. MSP430 operates down to 1.8V, remaining functional during brownout when node shuts down at ~3.0V.
 
 **Reset Connection:** P1.4 configured as open-drain output (pulls LOW during pulse, Hi-Z otherwise). Heltec V3 has internal pull-up on RESET line, no external resistor needed.
 
