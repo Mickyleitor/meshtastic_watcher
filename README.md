@@ -69,9 +69,57 @@ The unstable pattern indicates the battery doesn't have sufficient charge yet. W
 
 ## Hardware Implementation
 
-This is a handcrafted solution built on perforated prototyping board for small-scale deployment. The design uses an MSP430G2553 microcontroller with its internal ADC for voltage monitoring and ultra-low power operation down to 1.8V. The physical build includes a socket or direct solder mount for the MSP430, pin headers for programming interface and node connection, and a decoupling capacitor on the power supply line. The compact form factor fits behind the Meshtastic node inside the limited space of typical outdoor node enclosures.
+### Overview
 
-Connections include shared power from the solar/battery system, common ground, reset signal to the Meshtastic node, and optional debug serial output. For initial testing, a standard MSP430 LaunchPad evaluation board can connect directly to the node. The custom board provides a more compact solution designed to fit within the tight space constraints of standard Meshtastic enclosures.
+This is a handcrafted solution built on perforated prototyping board for small-scale deployment (2-3 units). The design uses an MSP430G2553 microcontroller with its internal ADC for voltage monitoring and ultra-low power operation down to 1.8V. The compact form factor fits behind the Meshtastic node inside typical outdoor enclosures.
+
+### Components
+
+- **MSP430G2553** microcontroller (20-pin DIP package)
+- **10µF electrolytic capacitor** (power supply stabilization)
+- **47kΩ resistor + 100nF ceramic capacitor** (RC reset circuit on MSP430 RST pin)
+- **Pin headers** (programming interface: RST, TEST, P1.1, P1.2)
+- **Perforated prototype board**
+
+### Pinout & Connections
+
+```
+MSP430G2553 → Meshtastic Heltec V3
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VCC (Pin 1)   → VBAT or 3.3V supply (shared solar/battery)
+GND (Pin 20)  → GND
+P1.4 (Pin 7)  → Pin 0 (RESET) on Heltec V3
+
+MSP430 RST Circuit:
+━━━━━━━━━━━━━━━━━━━━
+RST (Pin 16) ──┬── 47kΩ ───── VCC
+               └── 100nF ── GND
+
+Programming Interface (headers only, not connected to node):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RST/SBWTDIO (Pin 16) ─┐
+TEST/SBWTCK (Pin 17) ─┤
+P1.1 (Pin 2, UART TX)─├─ Connect to MSP430 LaunchPad for flashing/debug
+P1.2 (Pin 3, UART RX)─┤   TX→RX, RX→TX, TEST→TEST, RST→RST
+VCC, GND ─────────────┘
+```
+
+**Power Source:** MSP430 VCC connected to same supply as Meshtastic node (solar/battery system). 10µF capacitor provides power stability during ADC measurements and pulse events. MSP430 operates down to 1.8V, remaining functional during brownout when node shuts down at ~3.0V.
+
+**Reset Connection:** P1.4 configured as open-drain output (pulls LOW during pulse, Hi-Z otherwise). Heltec V3 has internal pull-up on RESET line, no external resistor needed.
+
+**RC Reset Circuit:** Prevents MSP430 from entering undefined states during power-up. 47kΩ weak pull-up and 100nF capacitor provide clean reset timing.
+
+**Programming Interface:** Headers expose Spy-Bi-Wire (RST/TEST) and UART (P1.1/P1.2) for flashing and debugging. Not connected to Meshtastic node during normal operation.
+
+### Testing Setup
+
+For initial testing, use a standard **MSP430 LaunchPad** evaluation board:
+1. Connect LaunchPad pins to watchdog headers: TX→RX, RX→TX, TEST→TEST, RST→RST, VCC, GND
+2. Flash firmware via LaunchPad
+3. Connect watchdog VCC/GND to Meshtastic node power supply
+4. Connect watchdog P1.4 → Meshtastic Pin 0 (RESET)
+5. Verify reset pulse on power-on (~12h after deployment)
 
 ---
 
@@ -130,11 +178,11 @@ Modify values as needed, rebuild (`pio run`), and upload (`pio run --target uplo
 
 ## Notes
 
-**Timing precision:** Internal oscillator varies ±10% with temperature and voltage. Sufficient for this application.
+**Timing precision:** Internal VLO oscillator varies ±10% with temperature and voltage. Sufficient for this application (non-critical timing).
 
-**Voltage measurement:** Internal reference has ±5% tolerance. Thresholds can be calibrated per device if needed.
+**Voltage measurement:** Internal ADC reference has ±5% tolerance. Thresholds can be calibrated per device if higher accuracy needed.
 
-**Power consumption:** Device spends >99.99% of time in deep sleep. Negligible impact on solar/battery system.
+**Power consumption:** Device spends >99.99% of time in LPM3 (<1µA). Negligible impact on solar/battery system.
 
 **Scope:** This is a targeted solution for a specific deployment scenario. Designed for small-scale production (2-3 units).
 
